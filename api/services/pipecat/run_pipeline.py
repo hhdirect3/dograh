@@ -92,7 +92,7 @@ from api.services.workflow.workflow_graph import WorkflowGraph
 from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.audio.vad.vad_analyzer import VAD_CONFIDENCE, VAD_START_SECS, VADParams
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMAssistantAggregatorParams,
     LLMContextAggregatorPair,
@@ -953,7 +953,17 @@ async def _run_pipeline_impl(
         get_parent_context=engine._get_otel_context,
     )
     user_mute_strategies = _create_user_mute_strategies(engine, answer_supervisor)
-    user_vad_analyzer = SileroVADAnalyzer(params=VADParams(stop_secs=0.2))
+    # Optional per-workflow VAD overrides (workflow configurations
+    # "vad_start_secs", "vad_confidence"). With the defaults a short reply on a
+    # phone line ("No") can stay under start_secs=0.2 / confidence=0.7 and never
+    # count as speech. Unset, behaviour is unchanged.
+    user_vad_analyzer = SileroVADAnalyzer(
+        params=VADParams(
+            stop_secs=0.2,
+            start_secs=float(run_configs.get("vad_start_secs", VAD_START_SECS)),
+            confidence=float(run_configs.get("vad_confidence", VAD_CONFIDENCE)),
+        )
+    )
 
     # Configure turn strategies based on STT provider, model, and workflow configuration
     if is_realtime:
