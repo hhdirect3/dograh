@@ -71,6 +71,24 @@ def _render_transfer_destination(
     return str(rendered).strip()
 
 
+def _transfer_caller_id(workflow_run) -> str | None:
+    """The customer's number, to present on a transfer's destination leg.
+
+    The party being handed over is the callee of an outbound run and the
+    caller of an inbound one. Both are recorded on ``initial_context`` when the
+    run is created (campaign dispatch, inbound routing), so a transfer can carry
+    the customer's number instead of whatever the trunk defaults to, which is
+    what lets the receiving PBX match the call to its own record of the person.
+    """
+    initial_context = getattr(workflow_run, "initial_context", None) or {}
+    direction = str(initial_context.get("direction") or "").lower()
+    key = "caller_number" if direction == "inbound" else "called_number"
+    number = initial_context.get(key) or initial_context.get("phone_number")
+    if not number:
+        return None
+    return str(number).strip() or None
+
+
 def get_function_schema(
     function_name: str,
     description: str,
@@ -926,6 +944,7 @@ class CustomToolManager:
                         transfer_id=transfer_id,
                         conference_name=conference_name,
                         timeout=timeout_seconds,
+                        caller_id=_transfer_caller_id(workflow_run),
                         **(
                             {"introduction_audio_url": introduction_audio_url}
                             if introduction_audio_url

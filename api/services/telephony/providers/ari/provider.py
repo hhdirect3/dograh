@@ -468,6 +468,7 @@ class ARIProvider(TelephonyProvider):
         transfer_id: str,
         conference_name: str,
         timeout: int = 30,
+        caller_id: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Initiate ARI call transfer by creating an outbound channel to the destination.
@@ -481,6 +482,9 @@ class ARIProvider(TelephonyProvider):
                   transfer_id: Unique identifier for this transfer attempt
                   conference_name: Conference name (unused in ARI, kept for interface compatibility)
                   timeout: Transfer timeout in seconds
+                  caller_id: Number presented on the destination leg, normally
+                      the customer's own number so the receiving PBX can look
+                      the caller up. Omitted, Asterisk leaves it to the trunk.
                   **kwargs: Additional arguments
 
               Returns:
@@ -520,6 +524,8 @@ class ARIProvider(TelephonyProvider):
                 "appArgs": app_args,
                 "timeout": timeout,  # Keep timeout for transfer calls
             }
+            if caller_id:
+                params["callerId"] = caller_id
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
