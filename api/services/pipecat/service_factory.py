@@ -419,6 +419,11 @@ def create_stt_service(
             api_key=user_config.stt.api_key,
             settings=OpenAISTTSettings(model=user_config.stt.model),
             should_interrupt=False,  # Let UserAggregator own interruption confirmation.
+            # A segment the API transcribes as "" (a quiet "No" on a phone line,
+            # a cough) must still close the user's turn. Dropped, the turn-stop
+            # strategy keeps waiting for a transcript that never comes and the
+            # call stalls until the call monitor gives up on it.
+            push_empty_transcripts=True,
             **kwargs,
         )
     elif user_config.stt.provider == ServiceProviders.GOOGLE.value:
